@@ -1,5 +1,6 @@
 package ch.bbw.er.backend.user;
 
+import ch.bbw.er.backend.exception.ConflictException;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
@@ -10,15 +11,12 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import jakarta.persistence.EntityNotFoundException;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 
@@ -39,7 +37,7 @@ public class UserController {
     @SecurityRequirements
     public ResponseEntity<?> signUp(@Valid @RequestBody UserRequestDTO userRequestDTO) {
         if (userService.existsByEmailOrUsername(userRequestDTO.getEmail(), userRequestDTO.getUsername())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
+            throw new ConflictException("E-Mail oder Username ist bereits vergeben");
         }
         User user = UserMapper.fromDTO(userRequestDTO);
         user = userService.create(user);
@@ -72,12 +70,8 @@ public class UserController {
             @Parameter(description = "Id of user to get")
             @PathVariable("id") Integer id
     ) {
-        try {
-            User user = userService.findById(id);
-            return ResponseEntity.ok(UserMapper.toDTO(user));
-        } catch (EntityNotFoundException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User was not found");
-        }
+        User user = userService.findById(id);
+        return ResponseEntity.ok(UserMapper.toDTO(user));
     }
 
     @DeleteMapping("/{id}")
@@ -92,12 +86,8 @@ public class UserController {
             @Parameter(description = "Id of user to delete")
             @PathVariable("id") Integer id
     ) {
-        try {
-            userService.deleteById(id);
-            return ResponseEntity.noContent().build();
-        } catch (EntityNotFoundException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User was not found");
-        }
+        userService.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping
@@ -113,11 +103,7 @@ public class UserController {
             @Parameter(description = "User name to search, leave empty for all")
             @RequestParam(required = false) String name
     ) {
-        List<User> users;
-
-
-        users = userService.findAll();
-
+        List<User> users = userService.findAll();
 
         return ResponseEntity.ok(users.stream()
                 .map(UserMapper::toDTO)
@@ -141,17 +127,9 @@ public class UserController {
 
             @Parameter(description = "Id of user to update")
             @PathVariable Integer id) {
-        try {
-            User updateUser = UserMapper.fromDTO(updateUserDTO);
-            User savedUser = userService.update(updateUser, id);
-            return ResponseEntity.ok(UserMapper.toDTO(savedUser));
-        } catch (DataIntegrityViolationException e) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "User could not be created");
-        } catch (EntityNotFoundException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User was not found");
-        }
+
+        User updateUser = UserMapper.fromDTO(updateUserDTO);
+        User savedUser = userService.update(updateUser, id);
+        return ResponseEntity.ok(UserMapper.toDTO(savedUser));
     }
-
 }
-
-

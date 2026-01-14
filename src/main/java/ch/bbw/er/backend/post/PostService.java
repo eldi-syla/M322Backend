@@ -1,8 +1,8 @@
 package ch.bbw.er.backend.post;
 
+import ch.bbw.er.backend.exception.NotFoundException;
 import ch.bbw.er.backend.user.User;
 import ch.bbw.er.backend.user.UserService;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,7 +21,6 @@ public class PostService {
     }
 
     public PostResponseDTO create(PostRequestDTO request) {
-        // User anhand der authorId holen
         User author = userService.findById(request.getAuthorId());
 
         Post post = new Post(author, request.getText(), request.getImageId());
@@ -39,7 +38,7 @@ public class PostService {
 
     public Post findByIdEntity(Integer id) {
         return postRepository.findById(id)
-                .orElseThrow(EntityNotFoundException::new);
+                .orElseThrow(() -> new NotFoundException("Post mit ID " + id + " nicht gefunden"));
     }
 
     public PostResponseDTO findById(Integer id) {
@@ -48,6 +47,9 @@ public class PostService {
     }
 
     public void deleteById(Integer id) {
+        if (!postRepository.existsById(id)) {
+            throw new NotFoundException("Post mit ID " + id + " nicht gefunden");
+        }
         postRepository.deleteById(id);
     }
 
@@ -57,8 +59,8 @@ public class PostService {
                 post.getText(),
                 post.getImageId(),
                 post.getCreatedAt(),
-                post.getAuthor().getId(),          // <- hier: User.getId()
-                post.getAuthor().getUsername()     // <- hier: User.getUsername()
+                post.getAuthor().getId(),
+                post.getAuthor().getUsername()
         );
     }
 }

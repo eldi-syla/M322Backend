@@ -1,13 +1,14 @@
 package ch.bbw.er.backend.user;
 
 import ch.bbw.er.backend.configuration.JWTConfiguration;
+import ch.bbw.er.backend.exception.ConflictException;
+import ch.bbw.er.backend.exception.NotFoundException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -31,8 +32,8 @@ public class UserService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(username).orElseThrow(() -> new UsernameNotFoundException(username));
-        return user;
+        return userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException(username));
     }
 
     public String generateToken(User user) {
@@ -56,30 +57,42 @@ public class UserService implements UserDetailsService {
         return userRepository.existsByUsernameOrEmail(email, username);
     }
 
-
     public User create(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
-    
+
     public List<User> createAll(List<User> users) {
         users.forEach(user -> user.setPassword(passwordEncoder.encode(user.getPassword())));
         return userRepository.saveAll(users);
     }
 
-    public User update(User changingUser, Integer id) {    changingUser.setId(id);    return userRepository.save(changingUser);}
+    public User update(User changingUser, Integer id) {
+        if (!userRepository.existsById(id)) {
+            throw new NotFoundException("User mit ID " + id + " nicht gefunden");
+        }
+        changingUser.setId(id);
+        try {
+            return userRepository.save(changingUser);
+        } catch (Exception e) {
+            // z. B. Unique-Constraints (email/username) -> Konflikt
+            throw new ConflictException("Konflikt beim Aktualisieren des Users");
+        }
+    }
 
     public List<User> findAll() {
         return userRepository.findAll();
     }
 
     public User findById(Integer id) {
-        return userRepository.findById(id).orElseThrow(EntityNotFoundException::new);
+        return userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User mit ID " + id + " nicht gefunden"));
     }
 
     public void deleteById(Integer id) {
+        if (!userRepository.existsById(id)) {
+            throw new NotFoundException("User mit ID " + id + " nicht gefunden");
+        }
         userRepository.deleteById(id);
     }
-
-
 }

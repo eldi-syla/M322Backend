@@ -1,5 +1,6 @@
 package ch.bbw.er.backend.comment;
 
+import ch.bbw.er.backend.exception.BadRequestException;
 import ch.bbw.er.backend.post.Post;
 import ch.bbw.er.backend.post.PostService;
 import ch.bbw.er.backend.user.User;
@@ -25,6 +26,10 @@ public class CommentService {
     }
 
     public CommentResponseDTO create(CommentRequestDTO request) {
+        if (request.getText() == null || request.getText().isBlank()) {
+            throw new BadRequestException("Kommentartext darf nicht leer sein");
+        }
+
         Post post = postService.findByIdEntity(request.getPostId());
         User author = userService.findById(request.getAuthorId());
 
